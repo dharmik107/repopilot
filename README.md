@@ -1,7 +1,7 @@
 # 🚀 RepoPilot
 > **Navigate any codebase instantly.** 
 
-[![RepoPilot Demo](https://img.shields.io/badge/Watch-Project%20Demo-blue?style=for-the-badge&logo=linkedin)](DEMO_LINK_PLACEHOLDER)
+[![RepoPilot Demo](https://img.shields.io/badge/Watch-Project%20Demo-blue?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/posts/dharmik-pansuriya_generativeai-langgraph-python-activity-7437641677676347392-yIKk)
 
 RepoPilot is an intelligent, agentic RAG system built to explore and query large GitHub repositories with ease. Powered by **LangGraph**, **FastAPI**, and **Streamlit**, RepoPilot uses multi-agent workflows to intelligently index, evaluate, and navigate complex codebases, assets, and documentation.
 
