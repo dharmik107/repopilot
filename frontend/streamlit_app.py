@@ -113,6 +113,7 @@ with st.sidebar:
         <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px;">
             <span style="background: rgba(79, 172, 254, 0.1); color: #4facfe; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid rgba(79, 172, 254, 0.2);">NeonDB</span>
             <span style="background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid rgba(0, 242, 254, 0.2);">FastAPI</span>
+            <span style="background: rgba(34, 197, 94, 0.1); color: #22c55e; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid rgba(34, 197, 94, 0.2);">Pinecone</span>
             <span style="background: rgba(168, 85, 247, 0.1); color: #a855f7; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid rgba(168, 85, 247, 0.2);">LangGraph</span>
         </div>
     """, unsafe_allow_html=True)

@@ -12,13 +12,12 @@ def remove_readonly(func, path, excinfo):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
-from backend.database import init_db, SessionLocal, Project
+from backend.database import SessionLocal, Project
 
 def load_repo(repo_url: str):
     repo_path = "./temp_repo"
     
-    # Ensure DB is ready
-    init_db()
+    # Speed Optimization: Redundant DB init moved to app startup
     
     # Remove existing temp repo if any
     if os.path.exists(repo_path):

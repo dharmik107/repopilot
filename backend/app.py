@@ -4,7 +4,10 @@ from sqlalchemy.orm import Session
 from backend.loader import load_repo
 from backend.agents import solve_query
 from backend.vector_store import clear_vector_store, delete_repo
-from backend.database import get_db, Project
+from backend.database import get_db, Project, init_db
+
+# Initialize database tables on startup
+init_db()
 
 app = FastAPI(title="RepoPilot API")
 
