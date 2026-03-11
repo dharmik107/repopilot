@@ -22,17 +22,30 @@ def load_repo(repo_url: str):
     # Clone the repository
     Repo.clone_from(repo_url, to_path=repo_path)
     
-    # Load documents
+    # Load code/text documents
     loader = GenericLoader.from_filesystem(
         repo_path,
         glob="**/*",
-        suffixes=[".py", ".js", ".ts", ".html", ".css", ".md"],
+        suffixes=[".py", ".js", ".ts", ".html", ".css", ".md", ".txt"],
         parser=LanguageParser()
     )
     docs = loader.load()
     
+    # Handle Image Metadata Indexing
+    image_extensions = (".png", ".jpg", ".jpeg", ".svg", ".gif", ".ico")
+    image_docs = []
+    for root, dirs, files in os.walk(repo_path):
+        for file in files:
+            if file.lower().endswith(image_extensions):
+                rel_path = os.path.relpath(os.path.join(root, file), repo_path)
+                # Create a pseudo-document for the image
+                doc_content = f"Image File: {file}\nPath: {rel_path}\nDirectory: {os.path.basename(root)}\nDescription: Visual asset in the repository."
+                from langchain_core.documents import Document
+                image_docs.append(Document(page_content=doc_content, metadata={"source": rel_path, "type": "image"}))
+    
+    docs.extend(image_docs)
+
     # Split documents
-    # Using a general splitter for simplicity, though Language-specific splitters can be used
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = splitter.split_documents(docs)
     

@@ -22,99 +22,66 @@ llm = ChatGroq(
 
 # Nodes
 def query_agent(state: AgentState):
-    # Just pass through or initialize if needed
     return {"retry_count": state.get("retry_count", 0)}
 
 def retrieval_agent(state: AgentState):
     vector_store = get_vector_store()
-    # Boost k on retries to get more context
-    k = 5 if state["retry_count"] == 0 else 10
-    
-    # Use refined query if available, otherwise original
+    k = 6 if state["retry_count"] == 0 else 12
     search_query = state.get("query", state["query"])
+    
+    # Fast retrieval
     docs = vector_store.similarity_search(search_query, k=k)
-    doc_texts = [f"File: {d.metadata.get('source', 'unknown')}\nContent: {d.page_content}" for d in docs]
+    doc_texts = [f"[{d.metadata.get('source', 'src')}] {d.page_content}" for d in docs]
     return {"retrieved_docs": doc_texts}
 
-def evaluator_agent(state: AgentState):
-    docs_text = "\n\n---\n\n".join(state["retrieved_docs"])
-    prompt = f"""
-    User Query: {state['query']}
+def fast_evaluator_agent(state: AgentState):
+    """Combines evaluation and refinement check for speed."""
+    docs_text = "\n".join(state["retrieved_docs"][:3]) # Check top 3 for speed
+    prompt = f"Query: {state['query']}\nContext Snippet: {docs_text}\nIs this enough to answer? (YES/NO)"
     
-    Current Context Found:
-    {docs_text}
-    
-    Task: Evaluate if the provided context contains enough information to answer the User Query accurately.
-    Consider:
-    - If the user asks for a project name, look for headers in README or package names.
-    - If the user asks for purpose, look for descriptions.
-    - If the user asks for code details, look for relevant functions/classes.
-    
-    Answer ONLY 'YES' if it's sufficient, or 'NO' if more information is needed.
-    """
-    evaluation = llm.invoke([HumanMessage(content=prompt)]).content.strip().upper()
-    # Clean up the output in case LLM adds extra text
-    evaluation = "YES" if "YES" in evaluation else "NO"
+    res = llm.invoke([HumanMessage(content=prompt)]).content.strip().upper()
+    evaluation = "YES" if "YES" in res else "NO"
     return {"evaluation": evaluation}
 
 def query_refiner(state: AgentState):
-    # Try to rephrase the query to find broader or more specific info
-    prompt = f"Original Query: {state['query']}\n\nWe couldn't find enough info in the code. Rephrase this query to better find general project metadata, README content, or project headers in a vector database search. Only output the new query."
+    prompt = f"Question: {state['query']}\nFailed to find info. Rephrase for a high-level code search (look for README/headers/metadata). Just the query."
     refined_query = llm.invoke([HumanMessage(content=prompt)]).content.strip()
     return {"query": refined_query, "retry_count": state["retry_count"] + 1}
 
 def response_agent(state: AgentState):
-    docs_text = "\n\n---\n\n".join(state["retrieved_docs"])
+    docs_text = "\n\n".join(state["retrieved_docs"])
+    # Dynamic prompt based on evaluation
     if state["evaluation"] == "YES":
-        prompt = f"""
-        User Query: {state['query']}
-        
-        Context:
-        {docs_text}
-        
-        Answer the user's question clearly and concisely based ONLY on the provided context. 
-        If it's about the project name or purpose, extract it from the most relevant file (like README).
-        """
-        response = llm.invoke([HumanMessage(content=prompt)]).content
+        sys_msg = "Answer based on context. Be concise. Identify project name/assets if asked."
     else:
-        # Final fallback - attempt best guess based on what was found
-        prompt = f"""
-        User Query: {state['query']}
-        
-        Context (Incomplete):
-        {docs_text}
-        
-        We couldn't find a perfect answer, but based on this incomplete context, provide the most helpful response possible.
-        If you truly have no clue, say "I'm sorry, I'm not able to find the relevant information in the repository to answer your question perfectly."
-        """
-        response = llm.invoke([HumanMessage(content=prompt)]).content
+        sys_msg = "Context is limited. Give your best helpful guess or admit missing info. Be fast."
+    
+    prompt = f"Context:\n{docs_text}\n\nUser: {state['query']}\n\nAssistant:"
+    response = llm.invoke([HumanMessage(content=prompt)]).content
     return {"response": response}
 
-# Routing logic
-def should_continue(state: AgentState):
-    if state["evaluation"] == "YES":
+# Routing
+def fast_route(state: AgentState):
+    if state["evaluation"] == "YES" or state["retry_count"] >= 1:
         return "generate"
-    elif state["retry_count"] < 2:
-        return "retry"
-    else:
-        return "generate"
+    return "retry"
 
 # Build Graph
 builder = StateGraph(AgentState)
 
 builder.add_node("query_agent", query_agent)
 builder.add_node("retrieval_agent", retrieval_agent)
-builder.add_node("evaluator_agent", evaluator_agent)
+builder.add_node("fast_evaluator_agent", fast_evaluator_agent)
 builder.add_node("query_refiner", query_refiner)
 builder.add_node("response_agent", response_agent)
 
 builder.set_entry_point("query_agent")
 builder.add_edge("query_agent", "retrieval_agent")
-builder.add_edge("retrieval_agent", "evaluator_agent")
+builder.add_edge("retrieval_agent", "fast_evaluator_agent")
 
 builder.add_conditional_edges(
-    "evaluator_agent",
-    should_continue,
+    "fast_evaluator_agent",
+    fast_route,
     {
         "generate": "response_agent",
         "retry": "query_refiner"
@@ -127,12 +94,6 @@ builder.add_edge("response_agent", END)
 graph = builder.compile()
 
 def solve_query(query: str):
-    initial_state = {
-        "query": query,
-        "retrieved_docs": [],
-        "evaluation": "",
-        "response": "",
-        "retry_count": 0
-    }
+    initial_state = {"query": query, "retrieved_docs": [], "evaluation": "", "response": "", "retry_count": 0}
     result = graph.invoke(initial_state)
     return result["response"]
