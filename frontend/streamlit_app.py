@@ -118,7 +118,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<h2 class="sidebar-header">➕ ADD NEW REPOSITORY</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 class="sidebar-header">ADD NEW REPOSITORY</h2>', unsafe_allow_html=True)
     new_repo_url = st.text_input("Repo Link", key="new_repo", placeholder="https://github.com/user/repo")
     if st.button("Index & Add"):
         if new_repo_url:
@@ -173,6 +173,7 @@ if st.session_state.selected_repo:
             st.write(prompt)
 
         with st.chat_message("assistant"):
+            response_placeholder = st.empty() # Create a clean placeholder
             with st.spinner("RepoPilot Agent thinking..."):
                 try:
                     res = requests.post(
@@ -181,7 +182,7 @@ if st.session_state.selected_repo:
                     )
                     if res.status_code == 200:
                         answer = res.json()["answer"]
-                        st.write(answer)
+                        response_placeholder.write(answer) # Output to placeholder
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                 except Exception as e:
                     st.error(f"Error: {e}")
