@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+streamlit
+langgraph
+pinecone-client
+langchain-pinecone
+langchain-huggingface
+langchain-groq
+python-dotenv
+gitpython
+sentence-transformers
+pydantic
+pydantic-settings
+requests
+groq
+langchain-community
+langchain-openai
