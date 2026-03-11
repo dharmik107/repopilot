@@ -3,7 +3,10 @@ from typing import TypedDict, List, Annotated
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_core.messages import BaseMessage, HumanMessage
+from dotenv import load_dotenv
 from backend.vector_store import get_vector_store
+
+load_dotenv()
 
 # State definition
 class AgentState(TypedDict):

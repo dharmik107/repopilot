@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("NEON_DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL or NEON_DATABASE_URL not found in environment variables")
 
 # Use pool_pre_ping to handle NeonDB's serverless connection drops
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
