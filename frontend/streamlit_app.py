@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import time
 
-API_URL = "http://localhost:8000"
+API_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(page_title="RepoPilot", page_icon="🚀", layout="wide")
 
@@ -133,28 +133,35 @@ with st.sidebar:
                     st.error(f"Backend offline: {e}")
 
     st.markdown('<h2 class="sidebar-header">📂 MY PROJECTS</h2>', unsafe_allow_html=True)
+
     try:
-        projects = requests.get(f"{API_URL}/projects").json()
-        if not projects:
-            st.info("No projects yet.")
-        for p in projects:
-            with st.container():
-                st.markdown(f"**{p['name']}**")
-                cols = st.columns([1, 1])
-                if cols[0].button("Select", key=f"sel_{p['id']}"):
-                    st.session_state.selected_repo = p['repo_url']
-                    st.session_state.messages = [] # Reset chat for new repo
-                    st.toast(f"Switched to {p['name']}")
-                if cols[1].button("Delete", key=f"del_{p['id']}", type="secondary"):
-                    with st.spinner("Deleting..."):
-                        requests.delete(f"{API_URL}/projects/{p['id']}")
-                        if st.session_state.selected_repo == p['repo_url']:
-                            st.session_state.selected_repo = None
-                            st.session_state.messages = []
-                        st.rerun()
-                st.markdown("---")
-    except Exception:
-        st.error("Failed to load projects.")
+        response = requests.get(f"{API_URL}/projects", timeout=20)
+        if response.status_code == 200:
+            projects = response.json()
+            if not projects:
+                st.info("No projects yet.")
+            for p in projects:
+                with st.container():
+                    st.markdown(f"**{p['name']}**")
+                    cols = st.columns([1, 1])
+                    if cols[0].button("Select", key=f"sel_{p['id']}"):
+                        st.session_state.selected_repo = p['repo_url']
+                        st.session_state.messages = [] # Reset chat for new repo
+                        st.toast(f"Switched to {p['name']}")
+                    if cols[1].button("Delete", key=f"del_{p['id']}", type="secondary"):
+                        with st.spinner("Deleting..."):
+                            requests.delete(f"{API_URL}/projects/{p['id']}")
+                            if st.session_state.selected_repo == p['repo_url']:
+                                st.session_state.selected_repo = None
+                                st.session_state.messages = []
+                            st.rerun()
+                    st.markdown("---")
+        else:
+            st.error(f"Server Error ({response.status_code})")
+    except requests.exceptions.ConnectionError:
+        st.error("Backend Offline. Please run start.bat.")
+    except Exception as e:
+        st.error(f"Error loading projects: {e}")
 
 # Main Interface
 if st.session_state.selected_repo:
@@ -178,7 +185,8 @@ if st.session_state.selected_repo:
                 try:
                     res = requests.post(
                         f"{API_URL}/ask", 
-                        json={"query": prompt, "repo_url": st.session_state.selected_repo}
+                        json={"query": prompt, "repo_url": st.session_state.selected_repo},
+                        timeout=60
                     )
                     if res.status_code == 200:
                         answer = res.json()["answer"]
