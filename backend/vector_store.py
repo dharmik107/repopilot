@@ -38,3 +38,9 @@ def clear_vector_store():
     if PINECONE_INDEX_NAME in pc.list_indexes().names():
         index = pc.Index(PINECONE_INDEX_NAME)
         index.delete(delete_all=True)
+
+def delete_repo(repo_url: str):
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    if PINECONE_INDEX_NAME in pc.list_indexes().names():
+        index = pc.Index(PINECONE_INDEX_NAME)
+        index.delete(filter={"repo_url": repo_url})

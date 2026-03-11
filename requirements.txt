@@ -15,3 +15,5 @@ requests
 groq
 langchain-community
 langchain-openai
+sqlalchemy
+psycopg2-binary

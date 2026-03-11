@@ -12,8 +12,13 @@ def remove_readonly(func, path, excinfo):
     os.chmod(path, stat.S_IWRITE)
     func(path)
 
+from backend.database import init_db, SessionLocal, Project
+
 def load_repo(repo_url: str):
     repo_path = "./temp_repo"
+    
+    # Ensure DB is ready
+    init_db()
     
     # Remove existing temp repo if any
     if os.path.exists(repo_path):
@@ -21,6 +26,8 @@ def load_repo(repo_url: str):
         
     # Clone the repository
     Repo.clone_from(repo_url, to_path=repo_path)
+    
+    project_name = repo_url.split("/")[-1].replace(".git", "")
     
     # Load code/text documents
     loader = GenericLoader.from_filesystem(
@@ -38,12 +45,15 @@ def load_repo(repo_url: str):
         for file in files:
             if file.lower().endswith(image_extensions):
                 rel_path = os.path.relpath(os.path.join(root, file), repo_path)
-                # Create a pseudo-document for the image
-                doc_content = f"Image File: {file}\nPath: {rel_path}\nDirectory: {os.path.basename(root)}\nDescription: Visual asset in the repository."
+                doc_content = f"Image File: {file}\nPath: {rel_path}\nDirectory: {os.path.basename(root)}"
                 from langchain_core.documents import Document
                 image_docs.append(Document(page_content=doc_content, metadata={"source": rel_path, "type": "image"}))
     
     docs.extend(image_docs)
+
+    # Tag all docs with repo_url for filtering
+    for doc in docs:
+        doc.metadata["repo_url"] = repo_url
 
     # Split documents
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -52,6 +62,18 @@ def load_repo(repo_url: str):
     # Index documents into Pinecone
     vector_store = get_vector_store()
     vector_store.add_documents(splits)
+    
+    # Save to NeonDB
+    db = SessionLocal()
+    try:
+        # Check if exists
+        existing_project = db.query(Project).filter(Project.repo_url == repo_url).first()
+        if not existing_project:
+            new_project = Project(name=project_name, repo_url=repo_url)
+            db.add(new_project)
+            db.commit()
+    finally:
+        db.close()
     
     # Cleanup local files
     if os.path.exists(repo_path):

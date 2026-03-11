@@ -8,6 +8,7 @@ from backend.vector_store import get_vector_store
 # State definition
 class AgentState(TypedDict):
     query: str
+    repo_url: str # Target repo for multi-repo support
     retrieved_docs: List[str]
     evaluation: str
     response: str
@@ -29,8 +30,11 @@ def retrieval_agent(state: AgentState):
     k = 6 if state["retry_count"] == 0 else 12
     search_query = state.get("query", state["query"])
     
-    # Fast retrieval
-    docs = vector_store.similarity_search(search_query, k=k)
+    # Use repo_url filter for multi-repo support
+    filter_dict = {"repo_url": state["repo_url"]} if "repo_url" in state and state["repo_url"] else None
+    
+    # Fast retrieval with filter
+    docs = vector_store.similarity_search(search_query, k=k, filter=filter_dict)
     doc_texts = [f"[{d.metadata.get('source', 'src')}] {d.page_content}" for d in docs]
     return {"retrieved_docs": doc_texts}
 
@@ -93,7 +97,14 @@ builder.add_edge("response_agent", END)
 
 graph = builder.compile()
 
-def solve_query(query: str):
-    initial_state = {"query": query, "retrieved_docs": [], "evaluation": "", "response": "", "retry_count": 0}
+def solve_query(query: str, repo_url: str = None):
+    initial_state = {
+        "query": query, 
+        "repo_url": repo_url,
+        "retrieved_docs": [], 
+        "evaluation": "", 
+        "response": "", 
+        "retry_count": 0
+    }
     result = graph.invoke(initial_state)
     return result["response"]
