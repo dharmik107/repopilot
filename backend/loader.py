@@ -47,7 +47,7 @@ def load_repo(repo_url: str):
         for file in files:
             file_path = os.path.join(root, file)
             rel_path = os.path.relpath(file_path, repo_path)
-            ext = os.path.splitext(file).lower()[-1]
+            ext = os.path.splitext(file)[-1].lower()
             
             try:
                 if ext in text_extensions:

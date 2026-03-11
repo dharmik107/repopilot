@@ -5,11 +5,24 @@ from backend.loader import load_repo
 from backend.agents import solve_query
 from backend.vector_store import clear_vector_store, delete_repo
 from backend.database import get_db, Project, init_db
+import logging
+from contextlib import asynccontextmanager
 
-# Initialize database tables on startup
-init_db()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="RepoPilot API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables on startup
+    try:
+        init_db()
+        logger.info("Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+    yield
+
+app = FastAPI(title="RepoPilot API", lifespan=lifespan)
 
 class RepoRequest(BaseModel):
     repo_url: str
