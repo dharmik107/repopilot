@@ -57,13 +57,17 @@ def query_refiner(state: AgentState):
 
 def response_agent(state: AgentState):
     docs_text = "\n\n".join(state["retrieved_docs"])
-    # Dynamic prompt based on evaluation
-    if state["evaluation"] == "YES":
-        sys_msg = "Answer based on context. Be concise. Identify project name/assets if asked."
-    else:
-        sys_msg = "Context is limited. Give your best helpful guess or admit missing info. Be fast."
     
-    prompt = f"Context:\n{docs_text}\n\nUser: {state['query']}\n\nAssistant:"
+    # Enhanced prompt for universal reasoning
+    sys_msg = (
+        "You are RepoPilot, a world-class AI agent for codebase navigation. "
+        "Analyze the provided context which may include code in ANY language, documentation, or metadata about binary assets. "
+        "Project Structure Awareness: Identify and mention important files (README, config, assets) if relevant. "
+        "Accuracy: If context is insufficient, state what you see and what's missing. "
+        "Conciseness: Be direct and technical."
+    )
+    
+    prompt = f"System: {sys_msg}\n\nContext:\n{docs_text}\n\nUser Question: {state['query']}\n\nAssistant:"
     response = llm.invoke([HumanMessage(content=prompt)]).content
     return {"response": response}
 
